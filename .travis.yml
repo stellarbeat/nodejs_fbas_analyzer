@@ -19,7 +19,6 @@ before_install:
   - yarn global add yarn@latest
   - yarn
 script:
-  - yarn test
   # Publish when using '[publish binary]' keywords
   - COMMIT_MESSAGE=$(git log --format=%B --no-merges -n 1 | tr -d '\n')
   - if [[ ${COMMIT_MESSAGE} =~ "[publish binary]" ]]; then yarn upload-binary || exit 0; fi;
