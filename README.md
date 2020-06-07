@@ -1,15 +1,14 @@
 # fbas_analyzer_nodejs
 
-## install
-`yarn install`
-## build dev
-`neon build`
+Uses https://neon-bindings.com/ to create a nodejs module around the awesome https://github.com/wiberlin/fbas_analyzer tool.
 
-## run dev
-`node lib/index.js`
+Uses https://travis-ci.org/ to build binaries for linux & mac os (https://neon-bindings.com/docs/publishing)
 
 ## build release
-`neon build --release`
+`yarn install`
+
+## build dev
+`neon build`
 
 ## cleanup
 `neon clean`
