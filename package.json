@@ -4,16 +4,31 @@
   "description": "nodejs module wrapper of awesome https://github.com/wiberlin/fbas_analyzer tool.",
   "repository": {
     "type": "git",
-    "url": "https://github.com/stellarbeat/nodejs_fbas_analyzer.git"
+    "url": "git+https://github.com/stellarbeat/nodejs_fbas_analyzer.git"
   },
+  "files": [
+    "native/index.node",
+    "lib"
+  ],
   "main": "lib/index.js",
   "author": "pieterjan84 <pieterjan84@users.noreply.github.com>",
   "license": "MIT",
   "dependencies": {
-    "neon-cli": "^0.4.0"
+    "neon-cli": "^0.4.0",
+    "node-pre-gyp": "amilajack/node-pre-gyp#neon-compat",
+    "node-pre-gyp-github": "^1.4.3"
   },
   "scripts": {
-    "build": "neon build",
-    "build-release": "neon build --release"
+    "install": "node-pre-gyp install --fallback-to-build=false || neon build --release",
+    "package": "node-pre-gyp package",
+    "upload-binary": "node-pre-gyp package && node-pre-gyp-github publish"
+  },
+  "binary": {
+    "module_name": "index",
+    "host": "https://github.com/stellarbeat/nodejs_fbas_analyzer/releases/download/",
+    "remote_path": "{version}",
+    "package_name": "{node_abi}-{platform}-{arch}.tar.gz",
+    "module_path": "./native",
+    "pkg_path": "."
   }
 }
