@@ -16,4 +16,4 @@ neon-build = "0.4.0"
 
 [dependencies]
 neon = "0.4.0"
-fbas_analyzer = { git = "https://github.com/wiberlin/fbas_analyzer" }
+fbas_analyzer = "0.3"
