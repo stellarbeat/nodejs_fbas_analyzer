@@ -9,7 +9,6 @@ beforeEach(async () => {
 
 test('module', () => {
     console.time("analysis");
-    console.log(nodes);
     console.log(fbasAnalyzer.analyze(nodes));
     console.timeEnd("analysis");
 })

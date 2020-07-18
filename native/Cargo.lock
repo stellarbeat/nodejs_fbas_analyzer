@@ -333,8 +333,10 @@ name = "fbas_analyzer_nodejs"
 version = "0.1.0"
 dependencies = [
  "fbas_analyzer",
+ "hex",
  "neon",
  "neon-build",
+ "sha3",
 ]
 
 [[package]]
