@@ -7,7 +7,7 @@ use fbas_analyzer::Analysis;
 fn analyze(mut cx: FunctionContext) -> JsResult<JsObject> {
     let nodes= cx.argument::<JsString>(0)?.value();
     let fbas = Fbas::from_json_str(nodes.as_str());
-    let analysis = Analysis::new(&fbas, None);
+    let analysis = Analysis::new(&fbas);
 
     //return object
     let object = JsObject::new(&mut cx);

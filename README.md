@@ -14,3 +14,12 @@ Uses https://travis-ci.org/ to build binaries for linux & mac os (https://neon-b
 `neon clean`
 
 Cleans up native folder. 
+
+## upgrade fbas_analyzer rust package
+
+Update the version in Cargo.toml
+
+`cd native`
+
+`cargo build`
+

@@ -1,5 +1,3 @@
-//const jestGlobals = require("@jest/globals");
-
 const fbasAnalyzer = require('..');
 const fs = require('fs');
 

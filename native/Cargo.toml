@@ -16,4 +16,4 @@ neon-build = "0.4.0"
 
 [dependencies]
 neon = "0.4.0"
-fbas_analyzer = "0.3"
+fbas_analyzer = "0.4.1"
