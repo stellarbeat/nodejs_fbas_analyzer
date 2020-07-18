@@ -1,6 +1,6 @@
 {
   "name": "@stellarbeat/fbas_analyzer_nodejs",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "nodejs module wrapper of awesome https://github.com/wiberlin/fbas_analyzer tool.",
   "repository": {
     "type": "git",
@@ -30,5 +30,8 @@
     "package_name": "{node_abi}-{platform}-{arch}.tar.gz",
     "module_path": "./native",
     "pkg_path": "."
+  },
+  "devDependencies": {
+    "jest": "^26.1.0"
   }
 }
