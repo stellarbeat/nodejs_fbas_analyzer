@@ -1,11 +1,12 @@
 extern crate fbas_analyzer;
 
 use neon::prelude::*;
-use fbas_analyzer::{Fbas, NodeIdSetVecResult, NodeIdSetResult};
+use fbas_analyzer::{Fbas, NodeIdSetVecResult, NodeIdSetResult, Organizations};
 use fbas_analyzer::Analysis;
 use std::collections::HashMap;
 
 pub type PublicKey = String;
+pub type OrganizationName = String;
 
 pub struct FbasAnalyzer {
     results_cache: HashMap<Fbas, AnalysisResult>,
@@ -18,7 +19,9 @@ impl FbasAnalyzer {
         }
     }
 
-    pub fn analyze<'a>(&mut self, nodes: String, faulty_nodes: &[&'a str]) -> AnalysisResultFull {
+    pub fn analyze<'a>(&mut self, nodes: String, faulty_nodes: Vec<String>, organizations: String) -> AnalysisResultFull {
+
+        let faulty_nodes: Vec<&str> = faulty_nodes.iter().map(|x| &**x).collect();
         //let failingNodes = cx.argument::<JsArray>(1)?.value();
         let fbas = Fbas::from_json_str(nodes.as_str());
         let fbas = fbas.to_standard_form();
@@ -27,30 +30,46 @@ impl FbasAnalyzer {
         // configuration!
         let mut cache_hit = false;
         let analysis_results = if let Some(cached_results) = self.results_cache.get(&fbas) {
-            println!("FBAS not updated, reuse results!");
             cache_hit = true;
             cached_results.clone()
         } else {
-            println!("FBAS updated, running analysis");
             let new_results = FbasAnalyzer::do_analysis(&fbas);
             self.results_cache.insert(fbas.clone(), new_results.clone());
             new_results
         };
 
-        let _has_quorum_intersection = analysis_results.has_quorum_intersection;
-
+        let organizations = Organizations::from_json_str(
+            organizations.as_str(),
+            &fbas,
+        );
+        let org_minimal_blocking_sets = analysis_results.minimal_blocking_sets.merged_by_org(&organizations).minimal_sets();
         let minimal_blocking_sets_faulty_nodes_filtered = analysis_results.minimal_blocking_sets
             .without_nodes_pretty(&faulty_nodes, &fbas, None)
             .minimal_sets();
+        let org_minimal_blocking_sets_faulty_nodes_filtered= minimal_blocking_sets_faulty_nodes_filtered.merged_by_org(&organizations).minimal_sets();
+
+        let org_minimal_splitting_sets = analysis_results.minimal_splitting_sets.merged_by_org(&organizations).minimal_sets();
+        //println!("split: {:?}", org_minimal_splitting_sets.clone().into_pretty_vec_vec(&fbas, Some(&organizations)));
+
         let minimal_splitting_sets_faulty_nodes_filtered = analysis_results.minimal_splitting_sets
             .without_nodes_pretty(&faulty_nodes, &fbas, None)
             .minimal_sets();
+        let org_minimal_splitting_sets_faulty_nodes_filtered = minimal_splitting_sets_faulty_nodes_filtered.merged_by_org(&organizations).minimal_sets();
+
         let top_tier_faulty_nodes_filtered = analysis_results.top_tier.without_nodes_pretty(&faulty_nodes, &fbas, None);
+        let org_top_tier = analysis_results.top_tier.merged_by_org(&organizations);
+        let org_top_tier_faulty_nodes_filtered = top_tier_faulty_nodes_filtered.merged_by_org(&organizations);
 
         AnalysisResultFull {
             minimal_blocking_sets: analysis_results.minimal_blocking_sets.clone().into_pretty_vec_vec(&fbas, None),
+            org_minimal_blocking_sets: org_minimal_blocking_sets.clone().into_pretty_vec_vec(&fbas, Some(&organizations)),
+            org_minimal_blocking_sets_faulty_nodes_filtered: org_minimal_blocking_sets_faulty_nodes_filtered.clone().into_pretty_vec_vec(&fbas, Some(&organizations)),
             minimal_splitting_sets: analysis_results.minimal_splitting_sets.clone().into_pretty_vec_vec(&fbas, None),
+            org_minimal_splitting_sets: org_minimal_splitting_sets.clone().into_pretty_vec_vec(&fbas, Some(&organizations)),
+            org_minimal_splitting_sets_faulty_nodes_filtered: org_minimal_splitting_sets_faulty_nodes_filtered.clone().into_pretty_vec_vec(&fbas, Some(&organizations)),
             top_tier: analysis_results.top_tier.clone().into_pretty_vec(&fbas, None),
+            org_top_tier: org_top_tier.clone().into_pretty_vec(&fbas, Some(&organizations)),
+            org_top_tier_faulty_nodes_filtered: org_top_tier_faulty_nodes_filtered.clone().into_pretty_vec(&fbas, Some(&organizations)),
             has_quorum_intersection: analysis_results.has_quorum_intersection,
             minimal_blocking_sets_faulty_nodes_filtered: minimal_blocking_sets_faulty_nodes_filtered.clone().into_pretty_vec_vec(&fbas, None),
             minimal_splitting_sets_faulty_nodes_filtered: minimal_splitting_sets_faulty_nodes_filtered.clone().into_pretty_vec_vec(&fbas, None),
@@ -81,9 +100,15 @@ struct AnalysisResult {
 
 pub struct AnalysisResultFull {
     minimal_blocking_sets: Vec<Vec<PublicKey>>,
+    org_minimal_blocking_sets: Vec<Vec<OrganizationName>>,
+    org_minimal_blocking_sets_faulty_nodes_filtered: Vec<Vec<OrganizationName>>,
     minimal_splitting_sets: Vec<Vec<PublicKey>>,
+    org_minimal_splitting_sets: Vec<Vec<OrganizationName>>,
+    org_minimal_splitting_sets_faulty_nodes_filtered: Vec<Vec<OrganizationName>>,
     top_tier: Vec<PublicKey>,
     top_tier_faulty_nodes_filtered: Vec<PublicKey>,
+    org_top_tier: Vec<OrganizationName>,
+    org_top_tier_faulty_nodes_filtered: Vec<OrganizationName>,
     has_quorum_intersection: bool,
     minimal_blocking_sets_faulty_nodes_filtered: Vec<Vec<PublicKey>>,
     minimal_splitting_sets_faulty_nodes_filtered: Vec<Vec<PublicKey>>,
@@ -91,9 +116,6 @@ pub struct AnalysisResultFull {
     cache_hit: bool,
 }
 
-/**
-* NEON (javascript mapping) CODE BELOW
-*/
 declare_types! {
     pub class JsFbasAnalyzer for FbasAnalyzer {
 
@@ -104,12 +126,21 @@ declare_types! {
         method analyze(mut cx) {
             let mut this = cx.this();
             let nodes = cx.argument::<JsString>(0)?.value();
+            let faulty_nodes_js_arr_handle: Handle<JsArray> = cx.argument(1)?;
+            let faulty_nodes_js = faulty_nodes_js_arr_handle.to_vec(&mut cx)?;
+
+            let mut faulty_nodes: Vec<String> = Vec::with_capacity(faulty_nodes_js.len());
+            for faulty_node in faulty_nodes_js {
+                faulty_nodes.push(faulty_node.downcast::<JsString>().unwrap().value());
+            }
+            let orgs = cx.argument::<JsString>(2)?.value();
 
             let analysis_result = {
                 let guard = cx.lock();
                 let mut fbas_analyzer = this.borrow_mut(&guard);
 
-                fbas_analyzer.analyze(nodes, &vec![])
+                //fbas_analyzer.analyze(nodes, &vec![])
+                fbas_analyzer.analyze(nodes, faulty_nodes, orgs)
             };
 
             let js_analysis_result = JsObject::new(&mut cx);
@@ -119,23 +150,37 @@ declare_types! {
             let js_has_quorum_intersection_faulty_nodes_filtered = cx.boolean(analysis_result.has_quorum_intersection_faulty_nodes_filtered);
 
             let js_minimal_blocking_sets = vec_vec_to_js_array_array(&mut cx, analysis_result.minimal_blocking_sets.clone());
+            let js_org_minimal_blocking_sets = vec_vec_to_js_array_array(&mut cx, analysis_result.org_minimal_blocking_sets.clone());
             let js_minimal_blocking_sets_faulty_nodes_filtered = vec_vec_to_js_array_array(&mut cx, analysis_result.minimal_blocking_sets_faulty_nodes_filtered.clone());
+            let js_org_minimal_blocking_sets_faulty_nodes_filtered = vec_vec_to_js_array_array(&mut cx, analysis_result.org_minimal_blocking_sets_faulty_nodes_filtered.clone());
+
 
             let js_minimal_splitting_sets = vec_vec_to_js_array_array(&mut cx, analysis_result.minimal_splitting_sets.clone());
             let js_minimal_splitting_sets_faulty_nodes_filtered = vec_vec_to_js_array_array(&mut cx, analysis_result.minimal_splitting_sets_faulty_nodes_filtered.clone());
 
+            let js_org_minimal_splitting_sets = vec_vec_to_js_array_array(&mut cx, analysis_result.org_minimal_splitting_sets.clone());
+            let js_org_minimal_splitting_sets_faulty_nodes_filtered = vec_vec_to_js_array_array(&mut cx, analysis_result.org_minimal_splitting_sets_faulty_nodes_filtered.clone());
+
             let js_top_tier = vec_to_js_array(&mut cx, analysis_result.top_tier.clone());
+            let js_org_top_tier = vec_to_js_array(&mut cx, analysis_result.org_top_tier.clone());
             let js_top_tier_faulty_nodes_filtered = vec_to_js_array(&mut cx, analysis_result.top_tier_faulty_nodes_filtered.clone());
+            let js_org_top_tier_faulty_nodes_filtered = vec_to_js_array(&mut cx, analysis_result.org_top_tier_faulty_nodes_filtered.clone());
 
             js_analysis_result.set(&mut cx, "cache_hit", js_cache_hit).unwrap();
             js_analysis_result.set(&mut cx, "has_quorum_intersection", js_has_quorum_intersection).unwrap();
             js_analysis_result.set(&mut cx, "has_quorum_intersection_faulty_nodes_filtered", js_has_quorum_intersection_faulty_nodes_filtered).unwrap();
+            js_analysis_result.set(&mut cx, "org_minimal_blocking_sets", js_org_minimal_blocking_sets).unwrap();
+            js_analysis_result.set(&mut cx, "org_minimal_blocking_sets_faulty_nodes_filtered", js_org_minimal_blocking_sets_faulty_nodes_filtered).unwrap();
+            js_analysis_result.set(&mut cx, "org_minimal_splitting_sets", js_org_minimal_splitting_sets).unwrap();
+            js_analysis_result.set(&mut cx, "org_minimal_splitting_sets_faulty_nodes_filtered", js_org_minimal_splitting_sets_faulty_nodes_filtered).unwrap();
             js_analysis_result.set(&mut cx, "minimal_blocking_sets", js_minimal_blocking_sets).unwrap();
             js_analysis_result.set(&mut cx, "minimal_blocking_sets_faulty_nodes_filtered", js_minimal_blocking_sets_faulty_nodes_filtered).unwrap();
             js_analysis_result.set(&mut cx, "minimal_splitting_sets", js_minimal_splitting_sets).unwrap();
             js_analysis_result.set(&mut cx, "minimal_splitting_sets_faulty_nodes_filtered", js_minimal_splitting_sets_faulty_nodes_filtered).unwrap();
             js_analysis_result.set(&mut cx, "top_tier", js_top_tier).unwrap();
             js_analysis_result.set(&mut cx, "top_tier_faulty_nodes_filtered", js_top_tier_faulty_nodes_filtered).unwrap();
+            js_analysis_result.set(&mut cx, "org_top_tier", js_org_top_tier).unwrap();
+            js_analysis_result.set(&mut cx, "org_top_tier_faulty_nodes_filtered", js_org_top_tier_faulty_nodes_filtered).unwrap();
             Ok(js_analysis_result.upcast())
         }
 

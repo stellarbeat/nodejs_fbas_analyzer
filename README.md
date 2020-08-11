@@ -18,8 +18,7 @@ Cleans up native folder.
 ## upgrade fbas_analyzer rust package
 
 Update the version in Cargo.toml
-
-`cd native`
-
-`cargo build`
-
+```
+cd native
+cargo build
+```
