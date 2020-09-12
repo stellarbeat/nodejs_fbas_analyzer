@@ -2,10 +2,12 @@ const {FbasAnalyzer} = require('..');
 const fs = require('fs');
 
 let nodes;
+let nodesOlder;
 let organizations;
 
 beforeEach(async () => {
     nodes = (await fs.promises.readFile('./seed/nodes.json')).toString();
+    nodesOlder = (await fs.promises.readFile('./seed/nodes-older.json')).toString();
     organizations = (await fs.promises.readFile('./seed/organizations.json')).toString();
 })
 
@@ -20,10 +22,10 @@ function filterValidator(publicKey, quorumSet){
 
 test('quorum intersection when nodes are inactive', () => {
     let fbasAnalyzer = new FbasAnalyzer();
-    let analysis = fbasAnalyzer.analyze(nodes, [], organizations);
+    let analysis = fbasAnalyzer.analyze(nodesOlder, [], organizations);
     let blockingSet = analysis.minimal_blocking_sets[0];
 
-    analysis = fbasAnalyzer.analyze(nodes, blockingSet, organizations);
+    analysis = fbasAnalyzer.analyze(nodesOlder, blockingSet, organizations);
     let quorumIntersectionWithEvilNodes = analysis.has_quorum_intersection;
     let quorumIntersectionWithoutEvilNodes = analysis.has_quorum_intersection_faulty_nodes_filtered;
     expect(analysis.minimal_blocking_sets_faulty_nodes_filtered[0]).toHaveLength(0);
@@ -32,7 +34,7 @@ test('quorum intersection when nodes are inactive', () => {
     expect(quorumIntersectionWithoutEvilNodes).toBeTruthy();
 
     //let the blocking set fail, remove the nodes from the quorumsets.
-    let nodesObjects = JSON.parse(nodes);
+    let nodesObjects = JSON.parse(nodesOlder);
     blockingSet.forEach(blockingNode => {
         nodesObjects.forEach(node =>
             filterValidator(blockingNode, node.quorumSet)
