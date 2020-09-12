@@ -9,7 +9,43 @@ beforeEach(async () => {
     organizations = (await fs.promises.readFile('./seed/organizations.json')).toString();
 })
 
-test('module', () => {
+function filterValidator(publicKey, quorumSet){
+    let index = quorumSet.validators.indexOf(publicKey);
+    if (index > -1) {
+        quorumSet.validators.splice(index, 1);
+    }
+
+    quorumSet.innerQuorumSets.forEach(quorumSet => filterValidator(publicKey, quorumSet));
+}
+
+test('quorum intersection when nodes are inactive', () => {
+    let fbasAnalyzer = new FbasAnalyzer();
+    let analysis = fbasAnalyzer.analyze(nodes, [], organizations);
+    let blockingSet = analysis.minimal_blocking_sets[0];
+
+    analysis = fbasAnalyzer.analyze(nodes, blockingSet, organizations);
+    let quorumIntersectionWithEvilNodes = analysis.has_quorum_intersection;
+    let quorumIntersectionWithoutEvilNodes = analysis.has_quorum_intersection_faulty_nodes_filtered;
+    expect(analysis.minimal_blocking_sets_faulty_nodes_filtered[0]).toHaveLength(0);
+    expect(quorumIntersectionWithEvilNodes).toBeTruthy();
+    //if blocking set is regarded as evil:
+    expect(quorumIntersectionWithoutEvilNodes).toBeTruthy();
+
+    //let the blocking set fail, remove the nodes from the quorumsets.
+    let nodesObjects = JSON.parse(nodes);
+    blockingSet.forEach(blockingNode => {
+        nodesObjects.forEach(node =>
+            filterValidator(blockingNode, node.quorumSet)
+        );
+    });
+
+    analysis = fbasAnalyzer.analyze(JSON.stringify(nodesObjects), [], organizations);
+    expect(analysis.minimal_blocking_sets_faulty_nodes_filtered).toHaveLength(0);
+    expect(analysis.has_quorum_intersection).toEqual(false); //!!!this is different then regarding the blocking set as evil.
+
+});
+
+test('normal behaviour', () => {
     console.time("analysis");
     let fbasAnalyzer = new FbasAnalyzer();
     let analysis = fbasAnalyzer.analyze(nodes, ['GCGB2S2KGYARPVIA37HYZXVRM2YZUEXA6S33ZU5BUDC6THSB62LZSTYH', 'GCM6QMP3DLRPTAZW2UZPCPX2LF3SXWXKPMP3GKFZBDSF3QZGV2G5QSTK', 'GABMKJM6I25XI4K7U6XWMULOUQIQ27BCTMLS6BYYSOWKTBUXVRJSXHYQ'], organizations);
