@@ -316,9 +316,9 @@ dependencies = [
 
 [[package]]
 name = "fbas_analyzer"
-version = "0.4.2"
+version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "daf7c41f838be5f05ddd79420cf786b003b8f94d23625c7b792cb2b3e08b905b"
+checksum = "ca11939518791485e6bc512b764d140360928b0f1d5c926852291a36e44f1309"
 dependencies = [
  "bit-set",
  "bzip2",
