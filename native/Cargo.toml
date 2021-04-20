@@ -15,7 +15,7 @@ crate-type = ["cdylib"]
 neon-build = "0.4.0"
 
 [dependencies]
-neon = "0.4.0"
-fbas_analyzer = "0.4.3"
+neon = "0.8.0"
+fbas_analyzer = { version = "0.5", default-features = false }
 hex = "0.4.2"
 sha3 = "0.9.1"

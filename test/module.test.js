@@ -20,33 +20,6 @@ function filterValidator(publicKey, quorumSet){
     quorumSet.innerQuorumSets.forEach(quorumSet => filterValidator(publicKey, quorumSet));
 }
 
-test('quorum intersection when nodes are inactive', () => {
-    let fbasAnalyzer = new FbasAnalyzer();
-    let analysis = fbasAnalyzer.analyze(nodesOlder, [], organizations);
-    let blockingSet = analysis.minimal_blocking_sets[0];
-
-    analysis = fbasAnalyzer.analyze(nodesOlder, blockingSet, organizations);
-    let quorumIntersectionWithMaliciousNodes = analysis.has_quorum_intersection;
-    let quorumIntersectionWithoutMaliciousNodes = analysis.has_quorum_intersection_malicious_nodes_filtered;
-    expect(analysis.minimal_blocking_sets_faulty_nodes_filtered[0]).toHaveLength(0);
-    expect(quorumIntersectionWithMaliciousNodes).toBeTruthy();
-    //if blocking set is regarded as malicious:
-    expect(quorumIntersectionWithoutMaliciousNodes).toBeTruthy();
-
-    //let the blocking set fail, remove the nodes from the quorumsets.
-    let nodesObjects = JSON.parse(nodesOlder);
-    blockingSet.forEach(blockingNode => {
-        nodesObjects.forEach(node =>
-            filterValidator(blockingNode, node.quorumSet)
-        );
-    });
-
-    analysis = fbasAnalyzer.analyze(JSON.stringify(nodesObjects), [], organizations);
-    expect(analysis.minimal_blocking_sets_faulty_nodes_filtered).toHaveLength(0);
-    expect(analysis.has_quorum_intersection).toEqual(false); //!!!this is different then regarding the blocking set as malicious.
-
-});
-
 test('normal behaviour', () => {
     console.time("analysis");
     let fbasAnalyzer = new FbasAnalyzer();
@@ -54,10 +27,8 @@ test('normal behaviour', () => {
     //sdf org faulty
     expect(analysis.cache_hit).toBeFalsy();
     expect(analysis.top_tier.length).toEqual(23);
-    expect(analysis.top_tier_faulty_nodes_filtered.length).toEqual(20);
     expect(analysis.top_tier.includes('GCM6QMP3DLRPTAZW2UZPCPX2LF3SXWXKPMP3GKFZBDSF3QZGV2G5QSTK')).toBeTruthy();
     expect(analysis.org_top_tier.length).toEqual(7);
-    expect(analysis.org_top_tier_faulty_nodes_filtered.length).toEqual(6);
 
     expect(analysis.minimal_blocking_sets.length).toEqual(1890);
     //smallest set size
@@ -68,6 +39,8 @@ test('normal behaviour', () => {
     //smallest set size is first
     expect(analysis.minimal_splitting_sets[0].length).toEqual(3);
     expect(analysis.org_minimal_blocking_sets[0].length).toEqual(3);
+    expect(analysis.country_minimal_blocking_sets[0].length).toEqual(1);
+    expect(analysis.isp_minimal_blocking_sets[0].length).toEqual(1);
     expect(analysis.org_minimal_blocking_sets.length).toEqual(35);
 
     expect(analysis.minimal_blocking_sets_faulty_nodes_filtered.length).toEqual(240);
@@ -75,22 +48,16 @@ test('normal behaviour', () => {
 
     expect(analysis.org_minimal_blocking_sets_faulty_nodes_filtered.length).toEqual(15);
     expect(analysis.org_minimal_blocking_sets_faulty_nodes_filtered[0].length).toEqual(2);
-
-    expect(analysis.minimal_splitting_sets_malicious_nodes_filtered.length).toEqual(165);
-    expect(analysis.minimal_splitting_sets_malicious_nodes_filtered[0].length).toEqual(2);
+    expect(analysis.isp_minimal_blocking_sets_faulty_nodes_filtered[0].length).toEqual(1);
+    expect(analysis.country_minimal_blocking_sets_faulty_nodes_filtered[0].length).toEqual(1);
 
     expect(analysis.org_minimal_splitting_sets[0].length).toEqual(3);
     expect(analysis.org_minimal_splitting_sets.length).toEqual(35);
 
-    expect(analysis.org_minimal_splitting_sets_malicious_nodes_filtered[0].length).toEqual(2);
-    expect(analysis.org_minimal_splitting_sets_malicious_nodes_filtered.length).toEqual(15);
-
     expect(analysis.has_quorum_intersection).toBeTruthy();
-    expect(analysis.has_quorum_intersection_malicious_nodes_filtered).toBeTruthy();
     analysis = fbasAnalyzer.analyze(nodes, ['GA35T3723UP2XJLC2H7MNL6VMKZZIFL2VW7XHMFFJKKIA2FJCYTLKFBW',
         'GA5STBMV6QDXFDGD62MEHLLHZTPDI77U3PFOD2SELU5RJDHQWBR5NNK7',
         'GAAV2GCVFLNN522ORUYFV33E76VPC22E72S75AQ6MBR5V45Z5DWVPWEU'], organizations);
-    expect(analysis.has_quorum_intersection_malicious_nodes_filtered).toBeFalsy();
 
     analysis = fbasAnalyzer.analyze(nodes, ['GCM6QMP3DLRPTAZW2UZPCPX2LF3SXWXKPMP3GKFZBDSF3QZGV2G5QSTK'], organizations);
     expect(analysis.cache_hit).toBeTruthy();

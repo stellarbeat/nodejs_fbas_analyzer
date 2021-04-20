@@ -1,12 +1,14 @@
 extern crate fbas_analyzer;
 
 use neon::prelude::*;
-use fbas_analyzer::{Fbas, NodeIdSetVecResult, NodeIdSetResult, Organizations};
+use fbas_analyzer::{Fbas, NodeIdSetVecResult, NodeIdSetResult, Groupings};
 use fbas_analyzer::Analysis;
 use std::collections::HashMap;
 
 pub type PublicKey = String;
 pub type OrganizationName = String;
+pub type CountryName = String;
+pub type ISPName = String;
 
 pub struct FbasAnalyzer {
     results_cache: HashMap<Fbas, AnalysisResult>,
@@ -38,43 +40,40 @@ impl FbasAnalyzer {
             new_results
         };
 
-        let organizations = Organizations::from_json_str(
+        let organizations = Groupings::organizations_from_json_str(
             organizations.as_str(),
             &fbas,
         );
-        let org_minimal_blocking_sets = analysis_results.minimal_blocking_sets.merged_by_org(&organizations).minimal_sets();
+        let isps = Groupings::isps_from_json_str(nodes.as_str(), &fbas);
+        let countries = Groupings::countries_from_json_str(nodes.as_str(), &fbas);
+
+        let org_minimal_blocking_sets = analysis_results.minimal_blocking_sets.merged_by_group(&organizations).minimal_sets();
+        let isp_minimal_blocking_sets = analysis_results.minimal_blocking_sets.merged_by_group(&isps).minimal_sets();
+        let country_minimal_blocking_sets = analysis_results.minimal_blocking_sets.merged_by_group(&countries).minimal_sets();
         let minimal_blocking_sets_faulty_nodes_filtered = analysis_results.minimal_blocking_sets
             .without_nodes_pretty(&faulty_nodes, &fbas, None)
             .minimal_sets();
-        let org_minimal_blocking_sets_faulty_nodes_filtered= minimal_blocking_sets_faulty_nodes_filtered.merged_by_org(&organizations).minimal_sets();
+        let org_minimal_blocking_sets_faulty_nodes_filtered= minimal_blocking_sets_faulty_nodes_filtered.merged_by_group(&organizations).minimal_sets();
+        let isp_minimal_blocking_sets_faulty_nodes_filtered= minimal_blocking_sets_faulty_nodes_filtered.merged_by_group(&isps).minimal_sets();
+        let country_minimal_blocking_sets_faulty_nodes_filtered= minimal_blocking_sets_faulty_nodes_filtered.merged_by_group(&countries).minimal_sets();
 
-        let org_minimal_splitting_sets = analysis_results.minimal_splitting_sets.merged_by_org(&organizations).minimal_sets();
-        //println!("split: {:?}", org_minimal_splitting_sets.clone().into_pretty_vec_vec(&fbas, Some(&organizations)));
-
-        let minimal_splitting_sets_malicious_nodes_filtered = analysis_results.minimal_splitting_sets
-            .without_nodes_pretty(&faulty_nodes, &fbas, None)
-            .minimal_sets();
-        let org_minimal_splitting_sets_malicious_nodes_filtered = minimal_splitting_sets_malicious_nodes_filtered.merged_by_org(&organizations).minimal_sets();
-
-        let top_tier_faulty_nodes_filtered = analysis_results.top_tier.without_nodes_pretty(&faulty_nodes, &fbas, None);
-        let org_top_tier = analysis_results.top_tier.merged_by_org(&organizations);
-        let org_top_tier_faulty_nodes_filtered = top_tier_faulty_nodes_filtered.merged_by_org(&organizations);
+        let org_minimal_splitting_sets = analysis_results.minimal_splitting_sets.merged_by_group(&organizations).minimal_sets();
+        let org_top_tier = analysis_results.top_tier.merged_by_group(&organizations);
 
         AnalysisResultFull {
             minimal_blocking_sets: analysis_results.minimal_blocking_sets.clone().into_pretty_vec_vec(&fbas, None),
             org_minimal_blocking_sets: org_minimal_blocking_sets.clone().into_pretty_vec_vec(&fbas, Some(&organizations)),
+            isp_minimal_blocking_sets: isp_minimal_blocking_sets.clone().into_pretty_vec_vec(&fbas, Some(&isps)),
+            country_minimal_blocking_sets: country_minimal_blocking_sets.clone().into_pretty_vec_vec(&fbas, Some(&countries)),
+            minimal_blocking_sets_faulty_nodes_filtered: minimal_blocking_sets_faulty_nodes_filtered.clone().into_pretty_vec_vec(&fbas, None),
             org_minimal_blocking_sets_faulty_nodes_filtered: org_minimal_blocking_sets_faulty_nodes_filtered.clone().into_pretty_vec_vec(&fbas, Some(&organizations)),
+            isp_minimal_blocking_sets_faulty_nodes_filtered: isp_minimal_blocking_sets_faulty_nodes_filtered.clone().into_pretty_vec_vec(&fbas, Some(&isps)),
+            country_minimal_blocking_sets_faulty_nodes_filtered: country_minimal_blocking_sets_faulty_nodes_filtered.clone().into_pretty_vec_vec(&fbas, Some(&countries)),
             minimal_splitting_sets: analysis_results.minimal_splitting_sets.clone().into_pretty_vec_vec(&fbas, None),
             org_minimal_splitting_sets: org_minimal_splitting_sets.clone().into_pretty_vec_vec(&fbas, Some(&organizations)),
-            org_minimal_splitting_sets_malicious_nodes_filtered: org_minimal_splitting_sets_malicious_nodes_filtered.clone().into_pretty_vec_vec(&fbas, Some(&organizations)),
             top_tier: analysis_results.top_tier.clone().into_pretty_vec(&fbas, None),
             org_top_tier: org_top_tier.clone().into_pretty_vec(&fbas, Some(&organizations)),
-            org_top_tier_faulty_nodes_filtered: org_top_tier_faulty_nodes_filtered.clone().into_pretty_vec(&fbas, Some(&organizations)),
             has_quorum_intersection: analysis_results.has_quorum_intersection,
-            minimal_blocking_sets_faulty_nodes_filtered: minimal_blocking_sets_faulty_nodes_filtered.clone().into_pretty_vec_vec(&fbas, None),
-            minimal_splitting_sets_malicious_nodes_filtered: minimal_splitting_sets_malicious_nodes_filtered.clone().into_pretty_vec_vec(&fbas, None),
-            has_quorum_intersection_malicious_nodes_filtered: !minimal_splitting_sets_malicious_nodes_filtered.contains_empty_set(),
-            top_tier_faulty_nodes_filtered: top_tier_faulty_nodes_filtered.clone().into_pretty_vec(&fbas, None),
             cache_hit,
         }
     }
@@ -100,19 +99,18 @@ struct AnalysisResult {
 
 pub struct AnalysisResultFull {
     minimal_blocking_sets: Vec<Vec<PublicKey>>,
+    minimal_blocking_sets_faulty_nodes_filtered: Vec<Vec<PublicKey>>,
     org_minimal_blocking_sets: Vec<Vec<OrganizationName>>,
+    isp_minimal_blocking_sets: Vec<Vec<ISPName>>,
+    country_minimal_blocking_sets: Vec<Vec<CountryName>>,
     org_minimal_blocking_sets_faulty_nodes_filtered: Vec<Vec<OrganizationName>>,
+    isp_minimal_blocking_sets_faulty_nodes_filtered: Vec<Vec<ISPName>>,
+    country_minimal_blocking_sets_faulty_nodes_filtered: Vec<Vec<CountryName>>,
     minimal_splitting_sets: Vec<Vec<PublicKey>>,
     org_minimal_splitting_sets: Vec<Vec<OrganizationName>>,
-    org_minimal_splitting_sets_malicious_nodes_filtered: Vec<Vec<OrganizationName>>,
     top_tier: Vec<PublicKey>,
-    top_tier_faulty_nodes_filtered: Vec<PublicKey>,
     org_top_tier: Vec<OrganizationName>,
-    org_top_tier_faulty_nodes_filtered: Vec<OrganizationName>,
     has_quorum_intersection: bool,
-    minimal_blocking_sets_faulty_nodes_filtered: Vec<Vec<PublicKey>>,
-    minimal_splitting_sets_malicious_nodes_filtered: Vec<Vec<PublicKey>>,
-    has_quorum_intersection_malicious_nodes_filtered: bool,
     cache_hit: bool,
 }
 
@@ -147,40 +145,37 @@ declare_types! {
 
             let js_cache_hit = cx.boolean(analysis_result.cache_hit);
             let js_has_quorum_intersection = cx.boolean(analysis_result.has_quorum_intersection);
-            let js_has_quorum_intersection_malicious_nodes_filtered = cx.boolean(analysis_result.has_quorum_intersection_malicious_nodes_filtered);
 
             let js_minimal_blocking_sets = vec_vec_to_js_array_array(&mut cx, analysis_result.minimal_blocking_sets.clone());
             let js_org_minimal_blocking_sets = vec_vec_to_js_array_array(&mut cx, analysis_result.org_minimal_blocking_sets.clone());
+            let js_isp_minimal_blocking_sets = vec_vec_to_js_array_array(&mut cx, analysis_result.isp_minimal_blocking_sets.clone());
+            let js_country_minimal_blocking_sets = vec_vec_to_js_array_array(&mut cx, analysis_result.country_minimal_blocking_sets.clone());
             let js_minimal_blocking_sets_faulty_nodes_filtered = vec_vec_to_js_array_array(&mut cx, analysis_result.minimal_blocking_sets_faulty_nodes_filtered.clone());
             let js_org_minimal_blocking_sets_faulty_nodes_filtered = vec_vec_to_js_array_array(&mut cx, analysis_result.org_minimal_blocking_sets_faulty_nodes_filtered.clone());
+            let js_isp_minimal_blocking_sets_faulty_nodes_filtered = vec_vec_to_js_array_array(&mut cx, analysis_result.isp_minimal_blocking_sets_faulty_nodes_filtered.clone());
+            let js_country_minimal_blocking_sets_faulty_nodes_filtered = vec_vec_to_js_array_array(&mut cx, analysis_result.country_minimal_blocking_sets_faulty_nodes_filtered.clone());
 
 
             let js_minimal_splitting_sets = vec_vec_to_js_array_array(&mut cx, analysis_result.minimal_splitting_sets.clone());
-            let js_minimal_splitting_sets_malicious_nodes_filtered = vec_vec_to_js_array_array(&mut cx, analysis_result.minimal_splitting_sets_malicious_nodes_filtered.clone());
-
             let js_org_minimal_splitting_sets = vec_vec_to_js_array_array(&mut cx, analysis_result.org_minimal_splitting_sets.clone());
-            let js_org_minimal_splitting_sets_malicious_nodes_filtered = vec_vec_to_js_array_array(&mut cx, analysis_result.org_minimal_splitting_sets_malicious_nodes_filtered.clone());
 
             let js_top_tier = vec_to_js_array(&mut cx, analysis_result.top_tier.clone());
             let js_org_top_tier = vec_to_js_array(&mut cx, analysis_result.org_top_tier.clone());
-            let js_top_tier_faulty_nodes_filtered = vec_to_js_array(&mut cx, analysis_result.top_tier_faulty_nodes_filtered.clone());
-            let js_org_top_tier_faulty_nodes_filtered = vec_to_js_array(&mut cx, analysis_result.org_top_tier_faulty_nodes_filtered.clone());
 
             js_analysis_result.set(&mut cx, "cache_hit", js_cache_hit).unwrap();
             js_analysis_result.set(&mut cx, "has_quorum_intersection", js_has_quorum_intersection).unwrap();
-            js_analysis_result.set(&mut cx, "has_quorum_intersection_malicious_nodes_filtered", js_has_quorum_intersection_malicious_nodes_filtered).unwrap();
             js_analysis_result.set(&mut cx, "org_minimal_blocking_sets", js_org_minimal_blocking_sets).unwrap();
+            js_analysis_result.set(&mut cx, "isp_minimal_blocking_sets", js_isp_minimal_blocking_sets).unwrap();
+            js_analysis_result.set(&mut cx, "country_minimal_blocking_sets", js_country_minimal_blocking_sets).unwrap();
             js_analysis_result.set(&mut cx, "org_minimal_blocking_sets_faulty_nodes_filtered", js_org_minimal_blocking_sets_faulty_nodes_filtered).unwrap();
+            js_analysis_result.set(&mut cx, "isp_minimal_blocking_sets_faulty_nodes_filtered", js_isp_minimal_blocking_sets_faulty_nodes_filtered).unwrap();
+            js_analysis_result.set(&mut cx, "country_minimal_blocking_sets_faulty_nodes_filtered", js_country_minimal_blocking_sets_faulty_nodes_filtered).unwrap();
             js_analysis_result.set(&mut cx, "org_minimal_splitting_sets", js_org_minimal_splitting_sets).unwrap();
-            js_analysis_result.set(&mut cx, "org_minimal_splitting_sets_malicious_nodes_filtered", js_org_minimal_splitting_sets_malicious_nodes_filtered).unwrap();
             js_analysis_result.set(&mut cx, "minimal_blocking_sets", js_minimal_blocking_sets).unwrap();
             js_analysis_result.set(&mut cx, "minimal_blocking_sets_faulty_nodes_filtered", js_minimal_blocking_sets_faulty_nodes_filtered).unwrap();
             js_analysis_result.set(&mut cx, "minimal_splitting_sets", js_minimal_splitting_sets).unwrap();
-            js_analysis_result.set(&mut cx, "minimal_splitting_sets_malicious_nodes_filtered", js_minimal_splitting_sets_malicious_nodes_filtered).unwrap();
             js_analysis_result.set(&mut cx, "top_tier", js_top_tier).unwrap();
-            js_analysis_result.set(&mut cx, "top_tier_faulty_nodes_filtered", js_top_tier_faulty_nodes_filtered).unwrap();
             js_analysis_result.set(&mut cx, "org_top_tier", js_org_top_tier).unwrap();
-            js_analysis_result.set(&mut cx, "org_top_tier_faulty_nodes_filtered", js_org_top_tier_faulty_nodes_filtered).unwrap();
             Ok(js_analysis_result.upcast())
         }
 
