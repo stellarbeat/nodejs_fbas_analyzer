@@ -1,7 +1,7 @@
 jobs:
   include:
-    #- os: linux => removing for the moment because it seems incompatible with heroku, but it does get selected/downloaded by yarn
-     # dist: bionic
+    - os: linux
+      dist: bionic
     - os: osx
       osx_image: xcode9.4
 language: node_js
