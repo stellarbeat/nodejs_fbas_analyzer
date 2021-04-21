@@ -1,6 +1,6 @@
 {
   "name": "@stellarbeat/fbas_analyzer_nodejs",
-  "version": "0.7.6",
+  "version": "0.7.7",
   "description": "nodejs module wrapper of awesome https://github.com/wiberlin/fbas_analyzer tool.",
   "repository": {
     "type": "git",
@@ -14,7 +14,7 @@
   "license": "MIT",
   "dependencies": {
     "neon-cli": "^0.8.0",
-    "node-pre-gyp": "^0.17.0",
+    "@mapbox/node-pre-gyp": "^1.0.4",
     "node-pre-gyp-github": "^1.4.3"
   },
   "scripts": {
@@ -31,6 +31,6 @@
     "pkg_path": "."
   },
   "devDependencies": {
-    "jest": "^26.1.0"
+    "jest": "^26.6.3"
   }
 }
