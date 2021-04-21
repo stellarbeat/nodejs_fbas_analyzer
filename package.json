@@ -1,13 +1,12 @@
 {
   "name": "@stellarbeat/fbas_analyzer_nodejs",
-  "version": "0.7.3",
+  "version": "0.7.4",
   "description": "nodejs module wrapper of awesome https://github.com/wiberlin/fbas_analyzer tool.",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/stellarbeat/nodejs_fbas_analyzer.git"
   },
   "files": [
-    "native/index.node",
     "lib"
   ],
   "main": "lib/index.js",
