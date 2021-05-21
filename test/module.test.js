@@ -54,6 +54,12 @@ test('normal behaviour', () => {
     expect(analysis.org_minimal_splitting_sets[0].length).toEqual(3);
     expect(analysis.org_minimal_splitting_sets.length).toEqual(35);
 
+    expect(analysis.country_minimal_splitting_sets[0].length).toEqual(1);
+    expect(analysis.country_minimal_splitting_sets.length).toEqual(4);
+
+    expect(analysis.isp_minimal_splitting_sets[0].length).toEqual(1);
+    expect(analysis.isp_minimal_splitting_sets.length).toEqual(4);
+
     expect(analysis.has_quorum_intersection).toBeTruthy();
     analysis = fbasAnalyzer.analyze(nodes, ['GA35T3723UP2XJLC2H7MNL6VMKZZIFL2VW7XHMFFJKKIA2FJCYTLKFBW',
         'GA5STBMV6QDXFDGD62MEHLLHZTPDI77U3PFOD2SELU5RJDHQWBR5NNK7',

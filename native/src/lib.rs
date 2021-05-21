@@ -58,6 +58,9 @@ impl FbasAnalyzer {
         let country_minimal_blocking_sets_faulty_nodes_filtered= minimal_blocking_sets_faulty_nodes_filtered.merged_by_group(&countries).minimal_sets();
 
         let org_minimal_splitting_sets = analysis_results.minimal_splitting_sets.merged_by_group(&organizations).minimal_sets();
+        let country_minimal_splitting_sets = analysis_results.minimal_splitting_sets.merged_by_group(&countries).minimal_sets();
+        let isp_minimal_splitting_sets = analysis_results.minimal_splitting_sets.merged_by_group(&isps).minimal_sets();
+
         let org_top_tier = analysis_results.top_tier.merged_by_group(&organizations);
 
         AnalysisResultFull {
@@ -71,6 +74,8 @@ impl FbasAnalyzer {
             country_minimal_blocking_sets_faulty_nodes_filtered: country_minimal_blocking_sets_faulty_nodes_filtered.clone().into_pretty_vec_vec(&fbas, Some(&countries)),
             minimal_splitting_sets: analysis_results.minimal_splitting_sets.clone().into_pretty_vec_vec(&fbas, None),
             org_minimal_splitting_sets: org_minimal_splitting_sets.clone().into_pretty_vec_vec(&fbas, Some(&organizations)),
+            country_minimal_splitting_sets: country_minimal_splitting_sets.clone().into_pretty_vec_vec(&fbas, Some(&countries)),
+            isp_minimal_splitting_sets: isp_minimal_splitting_sets.clone().into_pretty_vec_vec(&fbas, Some(&isps)),
             top_tier: analysis_results.top_tier.clone().into_pretty_vec(&fbas, None),
             org_top_tier: org_top_tier.clone().into_pretty_vec(&fbas, Some(&organizations)),
             has_quorum_intersection: analysis_results.has_quorum_intersection,
@@ -108,6 +113,8 @@ pub struct AnalysisResultFull {
     country_minimal_blocking_sets_faulty_nodes_filtered: Vec<Vec<CountryName>>,
     minimal_splitting_sets: Vec<Vec<PublicKey>>,
     org_minimal_splitting_sets: Vec<Vec<OrganizationName>>,
+    country_minimal_splitting_sets: Vec<Vec<OrganizationName>>,
+    isp_minimal_splitting_sets: Vec<Vec<OrganizationName>>,
     top_tier: Vec<PublicKey>,
     org_top_tier: Vec<OrganizationName>,
     has_quorum_intersection: bool,
@@ -158,6 +165,8 @@ declare_types! {
 
             let js_minimal_splitting_sets = vec_vec_to_js_array_array(&mut cx, analysis_result.minimal_splitting_sets.clone());
             let js_org_minimal_splitting_sets = vec_vec_to_js_array_array(&mut cx, analysis_result.org_minimal_splitting_sets.clone());
+            let js_country_minimal_splitting_sets = vec_vec_to_js_array_array(&mut cx, analysis_result.country_minimal_splitting_sets.clone());
+            let js_isp_minimal_splitting_sets = vec_vec_to_js_array_array(&mut cx, analysis_result.isp_minimal_splitting_sets.clone());
 
             let js_top_tier = vec_to_js_array(&mut cx, analysis_result.top_tier.clone());
             let js_org_top_tier = vec_to_js_array(&mut cx, analysis_result.org_top_tier.clone());
@@ -171,6 +180,8 @@ declare_types! {
             js_analysis_result.set(&mut cx, "isp_minimal_blocking_sets_faulty_nodes_filtered", js_isp_minimal_blocking_sets_faulty_nodes_filtered).unwrap();
             js_analysis_result.set(&mut cx, "country_minimal_blocking_sets_faulty_nodes_filtered", js_country_minimal_blocking_sets_faulty_nodes_filtered).unwrap();
             js_analysis_result.set(&mut cx, "org_minimal_splitting_sets", js_org_minimal_splitting_sets).unwrap();
+            js_analysis_result.set(&mut cx, "country_minimal_splitting_sets", js_country_minimal_splitting_sets).unwrap();
+            js_analysis_result.set(&mut cx, "isp_minimal_splitting_sets", js_isp_minimal_splitting_sets).unwrap();
             js_analysis_result.set(&mut cx, "minimal_blocking_sets", js_minimal_blocking_sets).unwrap();
             js_analysis_result.set(&mut cx, "minimal_blocking_sets_faulty_nodes_filtered", js_minimal_blocking_sets_faulty_nodes_filtered).unwrap();
             js_analysis_result.set(&mut cx, "minimal_splitting_sets", js_minimal_splitting_sets).unwrap();
