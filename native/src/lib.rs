@@ -78,6 +78,7 @@ impl FbasAnalyzer {
             isp_minimal_splitting_sets: isp_minimal_splitting_sets.clone().into_pretty_vec_vec(&fbas, Some(&isps)),
             top_tier: analysis_results.top_tier.clone().into_pretty_vec(&fbas, None),
             org_top_tier: org_top_tier.clone().into_pretty_vec(&fbas, Some(&organizations)),
+            has_symmetric_top_tier: analysis_results.has_symmetric_top_tier,
             has_quorum_intersection: analysis_results.has_quorum_intersection,
             cache_hit,
         }
@@ -90,6 +91,7 @@ impl FbasAnalyzer {
             minimal_splitting_sets: analysis.minimal_splitting_sets(),
             top_tier: analysis.top_tier(),
             has_quorum_intersection: analysis.has_quorum_intersection(),
+            has_symmetric_top_tier: analysis.symmetric_top_tier().is_some()
         }
     }
 }
@@ -99,6 +101,7 @@ struct AnalysisResult {
     minimal_blocking_sets: NodeIdSetVecResult,
     minimal_splitting_sets: NodeIdSetVecResult,
     top_tier: NodeIdSetResult,
+    has_symmetric_top_tier: bool,
     has_quorum_intersection: bool,
 }
 
@@ -118,6 +121,7 @@ pub struct AnalysisResultFull {
     top_tier: Vec<PublicKey>,
     org_top_tier: Vec<OrganizationName>,
     has_quorum_intersection: bool,
+    has_symmetric_top_tier: bool,
     cache_hit: bool,
 }
 
@@ -152,6 +156,7 @@ declare_types! {
 
             let js_cache_hit = cx.boolean(analysis_result.cache_hit);
             let js_has_quorum_intersection = cx.boolean(analysis_result.has_quorum_intersection);
+            let js_has_symmetric_top_tier = cx.boolean(analysis_result.has_symmetric_top_tier);
 
             let js_minimal_blocking_sets = vec_vec_to_js_array_array(&mut cx, analysis_result.minimal_blocking_sets.clone());
             let js_org_minimal_blocking_sets = vec_vec_to_js_array_array(&mut cx, analysis_result.org_minimal_blocking_sets.clone());
@@ -174,6 +179,7 @@ declare_types! {
             js_analysis_result.set(&mut cx, "cache_hit", js_cache_hit).unwrap();
             js_analysis_result.set(&mut cx, "has_quorum_intersection", js_has_quorum_intersection).unwrap();
             js_analysis_result.set(&mut cx, "org_minimal_blocking_sets", js_org_minimal_blocking_sets).unwrap();
+            js_analysis_result.set(&mut cx, "has_symmetric_top_tier", js_has_symmetric_top_tier).unwrap();
             js_analysis_result.set(&mut cx, "isp_minimal_blocking_sets", js_isp_minimal_blocking_sets).unwrap();
             js_analysis_result.set(&mut cx, "country_minimal_blocking_sets", js_country_minimal_blocking_sets).unwrap();
             js_analysis_result.set(&mut cx, "org_minimal_blocking_sets_faulty_nodes_filtered", js_org_minimal_blocking_sets_faulty_nodes_filtered).unwrap();

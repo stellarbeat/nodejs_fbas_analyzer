@@ -29,6 +29,7 @@ test('normal behaviour', () => {
     expect(analysis.top_tier.length).toEqual(23);
     expect(analysis.top_tier.includes('GCM6QMP3DLRPTAZW2UZPCPX2LF3SXWXKPMP3GKFZBDSF3QZGV2G5QSTK')).toBeTruthy();
     expect(analysis.org_top_tier.length).toEqual(7);
+    expect(analysis.has_symmetric_top_tier).toEqual(true);
 
     expect(analysis.minimal_blocking_sets.length).toEqual(1890);
     //smallest set size
